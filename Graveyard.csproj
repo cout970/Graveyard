@@ -69,6 +69,7 @@
     <Content Include=".gitignore" />
     <Content Include="assets\graveyard\blocktypes\gravestone.json" />
     <Content Include="assets\graveyard\lang\en.json" />
+    <Content Include="assets\graveyard\lang\es.json" />
     <Content Include="assets\graveyard\textures\block\mygoldtexture.png" />
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,7 @@
+using System.ServiceModel;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -83,6 +86,7 @@ namespace Graveyard
     {
         private readonly InventoryGeneric _inv = new InventoryGeneric(100, "gravestone", "0", null);
         public string PlayerUid { get; private set; }
+        public string PlayerName { get; private set; }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -93,21 +97,12 @@ namespace Graveyard
         public void FromPlayerInv(IPlayer player)
         {
             PlayerUid = player.PlayerUID;
+            PlayerName = player.PlayerName;
+
             var backpack = player.InventoryManager.GetOwnInventory("backpack");
             var hotbar = player.InventoryManager.GetOwnInventory("hotbar");
 
             var slotIndex = 0;
-
-            for (var i = 0; i < backpack.QuantitySlots; i++)
-            {
-                var slot = backpack.GetSlot(i);
-                if (slot.Empty) continue;
-
-                _inv.GetSlot(slotIndex).Itemstack = slot.Itemstack;
-                slotIndex++;
-                slot.Itemstack = null;
-                slot.MarkDirty();
-            }
 
             for (var i = 0; i < hotbar.QuantitySlots; i++)
             {
@@ -119,10 +114,32 @@ namespace Graveyard
                 slot.Itemstack = null;
                 slot.MarkDirty();
             }
+
+            for (var i = 0; i < backpack.QuantitySlots; i++)
+            {
+                var slot = backpack.GetSlot(i);
+                if (slot.Empty) continue;
+
+                _inv.GetSlot(slotIndex).Itemstack = slot.Itemstack;
+                slotIndex++;
+                slot.Itemstack = null;
+                slot.MarkDirty();
+            }
         }
 
         public void ToPlayerInv(IPlayer player)
         {
+            for (var i = 0; i < _inv.QuantitySlots; i++)
+            {
+                var slot = _inv.GetSlot(i);
+                if (slot.Itemstack == null) continue;
+
+                if (player.InventoryManager.TryGiveItemstack(slot.Itemstack))
+                {
+                    slot.Itemstack = null;
+                    slot.MarkDirty();
+                }
+            }
         }
 
         public override void OnBlockBroken()
@@ -139,6 +156,11 @@ namespace Graveyard
             {
                 tree.SetString("playerUID", PlayerUid);
             }
+
+            if (PlayerName != null)
+            {
+                tree.SetString("playerName", PlayerName);
+            }
         }
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -146,6 +168,7 @@ namespace Graveyard
             base.FromTreeAtributes(tree, worldAccessForResolve);
             _inv.FromTreeAttributes(tree);
             PlayerUid = tree.GetString("playerUID");
+            PlayerName = tree.GetString("playerName");
         }
     }
 
@@ -158,13 +181,28 @@ namespace Graveyard
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel,
             ref EnumHandling handling)
         {
+            if (byPlayer is IClientPlayer)
+            {
+                handling = EnumHandling.PreventSubsequent;
+                return true;
+            }
+            
             var entity = world.BlockAccessor.GetBlockEntity(blockSel.Position);
 
             if (!(entity is GravestoneBlockEntity gravestone))
                 return base.OnBlockInteractStart(world, byPlayer, blockSel, ref handling);
 
             if (gravestone.PlayerUid != byPlayer.PlayerUID)
+            {
+                if (gravestone.PlayerName != null && byPlayer is IServerPlayer serverPlayer)
+                {
+                    serverPlayer.SendMessage(GlobalConstants.CurrentChatGroup,
+                        Lang.Get("graveyard:msg-graveFromPlayer", gravestone.PlayerName),
+                        EnumChatType.Notification);
+                }
+
                 return base.OnBlockInteractStart(world, byPlayer, blockSel, ref handling);
+            }
 
             if (world.Side == EnumAppSide.Server)
             {

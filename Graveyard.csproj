@@ -67,12 +67,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include=".gitignore" />
-    <Content Include="assets\mygoldblock\blocktypes\mygoldblock.json" />
-    <Content Include="assets\mygoldblock\lang\en.json" />
-    <Content Include="assets\mygoldblock\textures\block\mygoldtexture.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="run" />
+    <Content Include="assets\graveyard\blocktypes\gravestone.json" />
+    <Content Include="assets\graveyard\lang\en.json" />
+    <Content Include="assets\graveyard\textures\block\mygoldtexture.png" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\Graveyard.cs" />

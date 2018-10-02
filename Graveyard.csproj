@@ -66,12 +66,14 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include=".gitignore" />
     <Content Include="assets\graveyard\blocktypes\gravestone.json" />
     <Content Include="assets\graveyard\lang\en.json" />
     <Content Include="assets\graveyard\lang\es.json" />
     <Content Include="assets\graveyard\shapes\block\gravestone.json" />
     <Content Include="assets\graveyard\textures\block\gravestone.png" />
+    <Content Include="build.sh" />
+    <Content Include="modinfo.json" />
+    <Content Include="modicon.json" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\Graveyard.cs" />

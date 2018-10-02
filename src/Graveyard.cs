@@ -6,13 +6,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-[assembly: ModInfo("Graveyard",
-    Description = "TODO description",
-    Website = "",
-    Version = "1.0.0",
-    Authors = new[] {"cout970"})
-]
-
 namespace Graveyard
 {
     // ReSharper disable once UnusedMember.Global
@@ -53,27 +46,50 @@ namespace Graveyard
                 byPlayer.Entity.Properties.Server.Attributes = attr;
             }
 
+            // This is needed because by default the game drops all the player items before OnPlayerDeath
             attr.SetBool("keepContents", true);
         }
 
         public void OnPlayerDeath(IPlayer player, DamageSource source)
         {
-            var checkPos = player.Entity.Pos.AsBlockPos;
             var gravestone = player.Entity.World.GetBlock(new AssetLocation("graveyard", "gravestone"));
 
-            var placedPos = checkPos;
-            for (var i = 0; i < 10; i++)
+            var playerPos = player.Entity.Pos.AsBlockPos;
+            var checkBlock = player.Entity.World.BlockAccessor.GetBlock(playerPos);
+            var placePos = playerPos;
+            
+            // If the player is inside a block, check on top for a spot where to place the block
+            if (!checkBlock.IsReplacableBy(gravestone))
             {
-                var testBlock = player.Entity.World.BlockAccessor.GetBlock(checkPos.Add(BlockFacing.DOWN, i));
-                if (!testBlock.IsReplacableBy(gravestone)) continue;
-
-                placedPos = checkPos;
-                break;
+                for (int i = 0; i < 20; i++)
+                {
+                    checkBlock = player.Entity.World.BlockAccessor.GetBlock(playerPos.Add(BlockFacing.UP, i));
+                    if (checkBlock.IsReplacableBy(gravestone))
+                    {
+                        placePos = playerPos;
+                        break;
+                    }
+                }
             }
 
-            player.Entity.World.BlockAccessor.SetBlock(gravestone.BlockId, placedPos);
+            // If the player is in the air, check bellow until you find ground
+            for (int i = 0; i < 20; i++)
+            {
+                checkBlock = player.Entity.World.BlockAccessor.GetBlock(placePos.Add(BlockFacing.DOWN));
+                if (checkBlock.IsReplacableBy(gravestone))
+                {
+                    placePos = placePos.Add(BlockFacing.DOWN);
+                }
+                else
+                {
+                    break;
+                }
+            }
 
-            var entity = player.Entity.World.BlockAccessor.GetBlockEntity(placedPos);
+            player.Entity.World.BlockAccessor.SetBlock(gravestone.BlockId, placePos);
+
+            // Move items to the graveyard
+            var entity = player.Entity.World.BlockAccessor.GetBlockEntity(placePos);
             if (entity is GravestoneBlockEntity blockEntity)
             {
                 blockEntity.FromPlayerInv(player);
@@ -84,7 +100,7 @@ namespace Graveyard
     // ReSharper disable once ClassNeverInstantiated.Global
     public class GravestoneBlockEntity : BlockEntity
     {
-        private readonly InventoryGeneric _inv = new InventoryGeneric(100, "gravestone", "0", null);
+        private readonly InventoryGeneric _inv = new InventoryGeneric(100, "gravestone", "", null);
         public string PlayerUid { get; private set; }
         public string PlayerName { get; private set; }
 
@@ -104,6 +120,7 @@ namespace Graveyard
 
             var slotIndex = 0;
 
+            // Move hotbar items
             for (var i = 0; i < hotbar.QuantitySlots; i++)
             {
                 var slot = hotbar.GetSlot(i);
@@ -115,6 +132,7 @@ namespace Graveyard
                 slot.MarkDirty();
             }
 
+            // Move backpacks
             for (var i = 0; i < backpack.QuantitySlots; i++)
             {
                 var slot = backpack.GetSlot(i);
@@ -125,6 +143,7 @@ namespace Graveyard
                 slot.Itemstack = null;
                 slot.MarkDirty();
             }
+            MarkDirty();
         }
 
         public void ToPlayerInv(IPlayer player)
@@ -140,6 +159,7 @@ namespace Graveyard
                     slot.MarkDirty();
                 }
             }
+            MarkDirty();
         }
 
         public override void OnBlockBroken()
@@ -186,7 +206,7 @@ namespace Graveyard
                 handling = EnumHandling.PreventSubsequent;
                 return true;
             }
-            
+
             var entity = world.BlockAccessor.GetBlockEntity(blockSel.Position);
 
             if (!(entity is GravestoneBlockEntity gravestone))

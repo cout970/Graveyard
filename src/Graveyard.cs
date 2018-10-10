@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ServiceModel;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -5,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent;
 
 namespace Graveyard
 {
@@ -57,50 +60,80 @@ namespace Graveyard
             var playerPos = player.Entity.Pos.AsBlockPos;
             var checkBlock = player.Entity.World.BlockAccessor.GetBlock(playerPos);
             var placePos = playerPos;
-            
+
             // If the player is inside a block, check on top for a spot where to place the block
             if (!checkBlock.IsReplacableBy(gravestone))
             {
-                for (int i = 0; i < 20; i++)
+                for (var i = 0; i < 20; i++)
                 {
-                    checkBlock = player.Entity.World.BlockAccessor.GetBlock(playerPos.Add(BlockFacing.UP, i));
-                    if (checkBlock.IsReplacableBy(gravestone))
-                    {
-                        placePos = playerPos;
-                        break;
-                    }
-                }
-            }
+                    playerPos.Add(BlockFacing.UP);
+                    checkBlock = player.Entity.World.BlockAccessor.GetBlock(playerPos);
+                    if (!checkBlock.IsReplacableBy(gravestone)) continue;
 
-            // If the player is in the air, check bellow until you find ground
-            for (int i = 0; i < 20; i++)
-            {
-                checkBlock = player.Entity.World.BlockAccessor.GetBlock(placePos.Add(BlockFacing.DOWN));
-                if (checkBlock.IsReplacableBy(gravestone))
-                {
-                    placePos = placePos.Add(BlockFacing.DOWN);
-                }
-                else
-                {
+                    placePos = playerPos;
                     break;
                 }
             }
 
-            player.Entity.World.BlockAccessor.SetBlock(gravestone.BlockId, placePos);
-
-            // Move items to the graveyard
-            var entity = player.Entity.World.BlockAccessor.GetBlockEntity(placePos);
-            if (entity is GravestoneBlockEntity blockEntity)
+            // If the player is in the air, check bellow until you find ground
+            for (var i = 0; i < 20; i++)
             {
-                blockEntity.FromPlayerInv(player);
+                placePos.Add(BlockFacing.DOWN);
+                checkBlock = player.Entity.World.BlockAccessor.GetBlock(placePos);
+                if (checkBlock.IsReplacableBy(gravestone)) continue;
+
+                placePos.Add(BlockFacing.UP);
+                break;
             }
+
+            if (!EmptyInventory(player))
+            {
+                player.Entity.World.BlockAccessor.SetBlock(gravestone.BlockId, placePos);
+
+                // Move items to the graveyard
+                var entity = player.Entity.World.BlockAccessor.GetBlockEntity(placePos);
+                if (entity is GravestoneBlockEntity blockEntity)
+                {
+                    blockEntity.FromPlayerInv(player);
+                }
+
+                if (player is IServerPlayer sp)
+                {
+                    var middle = player.Entity.World.DefaultSpawnPosition.AsBlockPos;
+                    var pos = new BlockPos(placePos.X - middle.X, middle.Y, placePos.X - middle.Z);
+
+                    sp.SendMessage(GlobalConstants.GeneralChatGroup,
+                        Lang.Get("graveyard:msg-gravePos", player.PlayerName, pos),
+                        EnumChatType.Notification);
+                }
+            }
+        }
+
+        private static bool EmptyInventory(IPlayer player)
+        {
+            var hotbar = player.InventoryManager.GetOwnInventory("hotbar");
+            var backpack = player.InventoryManager.GetOwnInventory("backpack");
+
+            for (var i = 0; i < hotbar.QuantitySlots; i++)
+            {
+                var slot = hotbar.GetSlot(i);
+                if (!slot.Empty) return false;
+            }
+
+            for (var i = 0; i < backpack.QuantitySlots; i++)
+            {
+                var slot = backpack.GetSlot(i);
+                if (!slot.Empty) return false;
+            }
+
+            return true;
         }
     }
 
     // ReSharper disable once ClassNeverInstantiated.Global
     public class GravestoneBlockEntity : BlockEntity
     {
-        private readonly InventoryGeneric _inv = new InventoryGeneric(100, "gravestone", "", null);
+        private readonly InventoryGeneric _inv = new InventoryGeneric(100, null, null);
         public string PlayerUid { get; private set; }
         public string PlayerName { get; private set; }
 
@@ -108,6 +141,8 @@ namespace Graveyard
         {
             base.Initialize(api);
             _inv.Api = api;
+            _inv.LateInitialize("gravestone-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
+            _inv.ResolveBlocksOrItems();
         }
 
         public void FromPlayerInv(IPlayer player)
@@ -143,6 +178,7 @@ namespace Graveyard
                 slot.Itemstack = null;
                 slot.MarkDirty();
             }
+
             MarkDirty();
         }
 
@@ -153,12 +189,20 @@ namespace Graveyard
                 var slot = _inv.GetSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                if (player.InventoryManager.TryGiveItemstack(slot.Itemstack))
+                try
                 {
-                    slot.Itemstack = null;
-                    slot.MarkDirty();
+                    if (player.InventoryManager.TryGiveItemstack(slot.Itemstack))
+                    {
+                        slot.Itemstack = null;
+                        slot.MarkDirty();
+                    }
+                }
+                catch (Exception e)
+                {
+                    player.Entity.World.Logger.Error(e.ToString());
                 }
             }
+
             MarkDirty();
         }
 
@@ -189,6 +233,35 @@ namespace Graveyard
             _inv.FromTreeAttributes(tree);
             PlayerUid = tree.GetString("playerUID");
             PlayerName = tree.GetString("playerName");
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping,
+            Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            int q = _inv.QuantitySlots;
+            for (int i = 0; i < q; i++)
+            {
+                ItemSlot slot = _inv.GetSlot(i);
+                if (slot.Itemstack == null) continue;
+
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
+            }
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve,
+            Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        {
+            int q = _inv.QuantitySlots;
+            for (int i = 0; i < q; i++)
+            {
+                ItemSlot slot = _inv.GetSlot(i);
+                if (slot.Itemstack == null) continue;
+
+                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
+                {
+                    slot.Itemstack = null;
+                }
+            }
         }
     }
 

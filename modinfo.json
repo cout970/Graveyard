@@ -3,7 +3,7 @@
   "name": "Graveyard",
   "description" : "Places a gravestone when you die, the gravestone stores your items and you can get them by right clicking in the block",
   "authors": ["cout970"],
-  "version": "1.0.0",
+  "version": "1.1.0",
   "dependency": {
     "game": "1.7.1"
   },

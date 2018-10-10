@@ -1,4 +1,5 @@
 {
 	"block-gravestone": "Lapida",
-	"msg-graveFromPlayer": "Esta tumba pertenece a {0}"
+	"msg-graveFromPlayer": "Esta tumba pertenece a {0}",
+	"msg-gravePos": "Colocada la  tumba de {0} en {1}"
 }

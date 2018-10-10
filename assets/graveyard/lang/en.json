@@ -1,4 +1,5 @@
 {
 	"block-gravestone": "Gravestone",
-	"msg-graveFromPlayer": "This grave belongs to {0}"
+	"msg-graveFromPlayer": "This grave belongs to {0}",
+	"msg-gravePos": "Placed gravestone for {0} at {1}"
 }

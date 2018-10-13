@@ -100,7 +100,7 @@ namespace Graveyard
                 if (player is IServerPlayer sp)
                 {
                     var middle = player.Entity.World.DefaultSpawnPosition.AsBlockPos;
-                    var pos = new BlockPos(placePos.X - middle.X, middle.Y, placePos.X - middle.Z);
+                    var pos = new BlockPos(placePos.X - middle.X, middle.Y, placePos.Z - middle.Z);
 
                     sp.SendMessage(GlobalConstants.GeneralChatGroup,
                         Lang.Get("graveyard:msg-gravePos", player.PlayerName, pos),

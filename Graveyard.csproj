@@ -76,10 +76,11 @@
     <Content Include="modicon.json" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\AssemblyInfo.cs" />
     <Compile Include="src\Graveyard.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>sh ../../copy_fix.sh</PostBuildEvent>
+    <PostBuildEvent>bash ../../copy_fix.sh</PostBuildEvent>
   </PropertyGroup>
 </Project>

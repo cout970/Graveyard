@@ -1,20 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.ServiceModel;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.GameContent;
 
 namespace Graveyard
 {
     // ReSharper disable once UnusedMember.Global
     public class GraveyardSystem : ModSystem
     {
-        public override bool AllowRuntimeReload() => true;
 
         public EventHandler EventHandler { get; set; }
 
@@ -88,7 +85,7 @@ namespace Graveyard
 
             if (!EmptyInventory(player))
             {
-                player.Entity.World.BlockAccessor.SetBlock(gravestone.BlockId, placePos);
+                player.Entity.World.BlockAccessor.SetBlock(gravestone.Id, placePos);
 
                 // Move items to the graveyard
                 var entity = player.Entity.World.BlockAccessor.GetBlockEntity(placePos);
@@ -114,15 +111,15 @@ namespace Graveyard
             var hotbar = player.InventoryManager.GetOwnInventory("hotbar");
             var backpack = player.InventoryManager.GetOwnInventory("backpack");
 
-            for (var i = 0; i < hotbar.QuantitySlots; i++)
+            for (var i = 0; i < hotbar.Count; i++)
             {
-                var slot = hotbar.GetSlot(i);
+                var slot = hotbar[i];
                 if (!slot.Empty) return false;
             }
 
-            for (var i = 0; i < backpack.QuantitySlots; i++)
+            for (var i = 0; i < backpack.Count; i++)
             {
-                var slot = backpack.GetSlot(i);
+                var slot = backpack[i];
                 if (!slot.Empty) return false;
             }
 
@@ -156,24 +153,24 @@ namespace Graveyard
             var slotIndex = 0;
 
             // Move hotbar items
-            for (var i = 0; i < hotbar.QuantitySlots; i++)
+            for (var i = 0; i < hotbar.Count; i++)
             {
-                var slot = hotbar.GetSlot(i);
+                var slot = hotbar[i];
                 if (slot.Empty) continue;
 
-                _inv.GetSlot(slotIndex).Itemstack = slot.Itemstack;
+                _inv[slotIndex].Itemstack = slot.Itemstack;
                 slotIndex++;
                 slot.Itemstack = null;
                 slot.MarkDirty();
             }
 
             // Move backpacks
-            for (var i = 0; i < backpack.QuantitySlots; i++)
+            for (var i = 0; i < backpack.Count; i++)
             {
-                var slot = backpack.GetSlot(i);
+                var slot = backpack[i];
                 if (slot.Empty) continue;
 
-                _inv.GetSlot(slotIndex).Itemstack = slot.Itemstack;
+                _inv[slotIndex].Itemstack = slot.Itemstack;
                 slotIndex++;
                 slot.Itemstack = null;
                 slot.MarkDirty();
@@ -184,9 +181,9 @@ namespace Graveyard
 
         public void ToPlayerInv(IPlayer player)
         {
-            for (var i = 0; i < _inv.QuantitySlots; i++)
+            for (var i = 0; i < _inv.Count; i++)
             {
-                var slot = _inv.GetSlot(i);
+                var slot = _inv[i];
                 if (slot.Itemstack == null) continue;
 
                 try
@@ -238,10 +235,10 @@ namespace Graveyard
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping,
             Dictionary<int, AssetLocation> itemIdMapping)
         {
-            int q = _inv.QuantitySlots;
+            int q = _inv.Count;
             for (int i = 0; i < q; i++)
             {
-                ItemSlot slot = _inv.GetSlot(i);
+                ItemSlot slot = _inv[i];
                 if (slot.Itemstack == null) continue;
 
                 slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
@@ -251,10 +248,10 @@ namespace Graveyard
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve,
             Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
-            int q = _inv.QuantitySlots;
+            int q = _inv.Count;
             for (int i = 0; i < q; i++)
             {
-                ItemSlot slot = _inv.GetSlot(i);
+                ItemSlot slot = _inv[i];
                 if (slot.Itemstack == null) continue;
 
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))

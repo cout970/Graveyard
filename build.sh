@@ -1,6 +1,6 @@
 #!/bin/sh
 
-NAME='Graveyard-1.1.4'
+NAME='Graveyard-1.1.5'
 
 mkdir tmp
 cp -r assets tmp/assets

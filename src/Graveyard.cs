@@ -138,7 +138,7 @@ namespace Graveyard
         {
             base.Initialize(api);
             _inv.Api = api;
-            _inv.LateInitialize("gravestone-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
+            _inv.LateInitialize("gravestone-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             _inv.ResolveBlocksOrItems();
         }
 
@@ -206,7 +206,7 @@ namespace Graveyard
         public override void OnBlockBroken()
         {
             base.OnBlockBroken();
-            _inv.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
+            _inv.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -241,7 +241,7 @@ namespace Graveyard
                 ItemSlot slot = _inv[i];
                 if (slot.Itemstack == null) continue;
 
-                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(Api.World, slot, blockIdMapping, itemIdMapping);
             }
         }
 
@@ -304,6 +304,7 @@ namespace Graveyard
             return true;
         }
 
+        // ReSharper disable once RedundantAssignment
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer,
             float dropChanceMultiplier, ref EnumHandling handling)
         {
